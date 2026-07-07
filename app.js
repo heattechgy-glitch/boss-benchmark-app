@@ -1,152 +1,96 @@
-document.addEventListener('DOMContentLoaded', function() {
-  const list = document.getElementById('sortable-list');
-  let draggedItem = null;
-  let placeholder = null;
+// BOSS-Benchmark Application
 
-  function createPlaceholder() {
-    const li = document.createElement('li');
-    li.className = 'placeholder';
-    li.style.height = '40px';
-    li.style.backgroundColor = '#e0e0e0';
-    li.style.border = '2px dashed #999';
-    li.style.listStyle = 'none';
-    li.style.marginBottom = '8px';
-    return li;
+class BenchmarkApp {
+  constructor() {
+    this.benchmarks = [];
+    this.container = document.getElementById('app') || document.body;
+    this.init();
   }
 
-  function handleDragStart(e) {
-    draggedItem = e.target;
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/html', e.target.innerHTML);
-    setTimeout(() => {
-      e.target.style.opacity = '0.4';
-    }, 0);
+  init() {
+    this.render();
   }
 
-  function handleDragOver(e) {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    
-    const target = e.target.closest('li');
-    if (!target || target === draggedItem || target === placeholder) return;
-    
-    if (!placeholder) {
-      placeholder = createPlaceholder();
-    }
-    
-    const rect = target.getBoundingClientRect();
-    const midpoint = rect.top + rect.height / 2;
-    
-    if (e.clientY < midpoint) {
-      target.parentNode.insertBefore(placeholder, target);
+  render() {
+    if (this.benchmarks.length === 0) {
+      this.renderEmptyState();
     } else {
-      target.parentNode.insertBefore(placeholder, target.nextSibling);
+      this.renderBenchmarks();
     }
   }
 
-  function handleDragEnter(e) {
-    e.preventDefault();
+  renderEmptyState() {
+    const emptyStateHTML = `
+      <div class="empty-state">
+        <div class="empty-state-icon">
+          <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 3v18h18"/>
+            <path d="M18 17V9"/>
+            <path d="M13 17V5"/>
+            <path d="M8 17v-3"/>
+          </svg>
+        </div>
+        <h2 class="empty-state-title">No Benchmarks Yet</h2>
+        <p class="empty-state-message">
+          You haven't created any benchmarks yet. Start by creating your first benchmark to track and compare performance metrics.
+        </p>
+        <button class="empty-state-action" onclick="app.createBenchmark()">
+          Create Your First Benchmark
+        </button>
+      </div>
+    `;
+    this.container.innerHTML = emptyStateHTML;
   }
 
-  function handleDragLeave(e) {
-    // Optional: handle visual feedback on leave
+  renderBenchmarks() {
+    const benchmarksHTML = `
+      <div class="benchmarks-container">
+        <div class="benchmarks-header">
+          <h1>BOSS Benchmarks</h1>
+          <button class="btn-primary" onclick="app.createBenchmark()">
+            New Benchmark
+          </button>
+        </div>
+        <div class="benchmarks-list">
+          ${this.benchmarks.map(benchmark => this.renderBenchmarkCard(benchmark)).join('')}
+        </div>
+      </div>
+    `;
+    this.container.innerHTML = benchmarksHTML;
   }
 
-  function handleDrop(e) {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    if (placeholder && placeholder.parentNode) {
-      placeholder.parentNode.insertBefore(draggedItem, placeholder);
-      placeholder.parentNode.removeChild(placeholder);
-    }
-    
-    return false;
+  renderBenchmarkCard(benchmark) {
+    return `
+      <div class="benchmark-card" data-id="${benchmark.id}">
+        <h3>${benchmark.name}</h3>
+        <p>${benchmark.description || 'No description'}</p>
+        <div class="benchmark-meta">
+          <span>Created: ${new Date(benchmark.createdAt).toLocaleDateString()}</span>
+        </div>
+      </div>
+    `;
   }
 
-  function handleDragEnd(e) {
-    e.target.style.opacity = '1';
-    
-    if (placeholder && placeholder.parentNode) {
-      placeholder.parentNode.removeChild(placeholder);
-    }
-    
-    placeholder = null;
-    draggedItem = null;
-    
-    // Remove any lingering drag styles
-    const items = list.querySelectorAll('li');
-    items.forEach(item => {
-      item.style.opacity = '1';
-    });
-  }
-
-  function initializeDragAndDrop() {
-    const items = list.querySelectorAll('li');
-    
-    items.forEach(item => {
-      item.setAttribute('draggable', 'true');
-      item.addEventListener('dragstart', handleDragStart);
-      item.addEventListener('dragend', handleDragEnd);
-    });
-    
-    list.addEventListener('dragover', handleDragOver);
-    list.addEventListener('dragenter', handleDragEnter);
-    list.addEventListener('dragleave', handleDragLeave);
-    list.addEventListener('drop', handleDrop);
-  }
-
-  // Touch support for mobile devices
-  let touchStartY = 0;
-  let touchedItem = null;
-
-  function handleTouchStart(e) {
-    touchedItem = e.target.closest('li');
-    if (!touchedItem) return;
-    
-    touchStartY = e.touches[0].clientY;
-    touchedItem.style.opacity = '0.4';
-  }
-
-  function handleTouchMove(e) {
-    if (!touchedItem) return;
-    e.preventDefault();
-    
-    const touchY = e.touches[0].clientY;
-    const items = Array.from(list.querySelectorAll('li'));
-    
-    for (const item of items) {
-      if (item === touchedItem) continue;
-      
-      const rect = item.getBoundingClientRect();
-      if (touchY > rect.top && touchY < rect.bottom) {
-        const midpoint = rect.top + rect.height / 2;
-        if (touchY < midpoint) {
-          list.insertBefore(touchedItem, item);
-        } else {
-          list.insertBefore(touchedItem, item.nextSibling);
-        }
-        break;
-      }
+  createBenchmark() {
+    const name = prompt('Enter benchmark name:');
+    if (name) {
+      const benchmark = {
+        id: Date.now().toString(),
+        name: name,
+        description: '',
+        createdAt: new Date().toISOString(),
+        results: []
+      };
+      this.benchmarks.push(benchmark);
+      this.render();
     }
   }
 
-  function handleTouchEnd(e) {
-    if (touchedItem) {
-      touchedItem.style.opacity = '1';
-      touchedItem = null;
-    }
+  deleteBenchmark(id) {
+    this.benchmarks = this.benchmarks.filter(b => b.id !== id);
+    this.render();
   }
+}
 
-  function initializeTouchSupport() {
-    list.addEventListener('touchstart', handleTouchStart, { passive: false });
-    list.addEventListener('touchmove', handleTouchMove, { passive: false });
-    list.addEventListener('touchend', handleTouchEnd);
-  }
-
-  // Initialize
-  if (list) {
-    initializeDragAndDrop();
-    initializeTouchSupport();
-  }
-});
+// Initialize the application
+const app = new BenchmarkApp();
