@@ -56,7 +56,7 @@ const Card = styled.div`
   }
 
   @media (max-width: 600px) {
-    flex-direction: row;
+    flex-direction: column;
     height: auto;
   }
 `;
@@ -67,8 +67,9 @@ const ImageContainer = styled.div`
   flex-shrink: 0;
 
   @media (max-width: 600px) {
-    width: 40%;
-    height: auto;
+    width: 100%;
+    height: 180px;
+    min-height: 180px;
   }
 `;
 
@@ -88,6 +89,13 @@ const Price = styled.div`
   border-radius: 6px;
   font-weight: bold;
   font-size: 1.1rem;
+
+  @media (max-width: 600px) {
+    top: 12px;
+    left: 12px;
+    padding: 6px 12px;
+    font-size: 1rem;
+  }
 `;
 
 const Status = styled.div`
@@ -101,6 +109,13 @@ const Status = styled.div`
   font-size: 0.85rem;
   font-weight: 500;
   text-transform: uppercase;
+
+  @media (max-width: 600px) {
+    top: 12px;
+    right: 12px;
+    padding: 4px 10px;
+    font-size: 0.75rem;
+  }
 `;
 
 const Content = styled.div`
@@ -110,7 +125,7 @@ const Content = styled.div`
   flex-grow: 1;
 
   @media (max-width: 600px) {
-    width: 60%;
+    width: 100%;
     padding: 16px;
   }
 `;
@@ -119,6 +134,10 @@ const Title = styled.h3`
   font-size: 1.25rem;
   margin: 0 0 8px 0;
   color: #1f2937;
+
+  @media (max-width: 600px) {
+    font-size: 1.1rem;
+  }
 `;
 
 const Address = styled.p`
@@ -126,18 +145,22 @@ const Address = styled.p`
   font-size: 0.95rem;
   margin: 0 0 16px 0;
   line-height: 1.4;
+
+  @media (max-width: 600px) {
+    font-size: 0.85rem;
+    margin: 0 0 12px 0;
+  }
 `;
 
 const Features = styled.div`
   display: flex;
   gap: 20px;
   margin-bottom: 16px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid #e5e7eb;
   flex-wrap: wrap;
 
   @media (max-width: 600px) {
     gap: 12px;
+    margin-bottom: 12px;
   }
 `;
 
@@ -145,25 +168,34 @@ const Feature = styled.div`
   display: flex;
   align-items: center;
   gap: 6px;
-  color: #4b5563;
+  color: #6b7280;
   font-size: 0.9rem;
 
   svg {
-    color: #9ca3af;
+    color: #3b82f6;
+  }
+
+  @media (max-width: 600px) {
+    font-size: 0.8rem;
+    gap: 4px;
   }
 `;
 
 const Description = styled.p`
   color: #4b5563;
-  font-size: 0.95rem;
-  line-height: 1.5;
-  margin: 0 0 20px 0;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  margin: 0 0 16px 0;
   flex-grow: 1;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 
   @media (max-width: 600px) {
-    font-size: 0.9rem;
-    line-height: 1.4;
-    margin-bottom: 16px;
+    font-size: 0.85rem;
+    -webkit-line-clamp: 2;
+    margin: 0 0 12px 0;
   }
 `;
 
@@ -173,32 +205,48 @@ const AgentInfo = styled.div`
   gap: 12px;
   padding-top: 16px;
   border-top: 1px solid #e5e7eb;
+  margin-top: auto;
 
   @media (max-width: 600px) {
     padding-top: 12px;
+    gap: 10px;
   }
 `;
 
 const AgentImage = styled.img`
-  width: 48px;
-  height: 48px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   object-fit: cover;
+
+  @media (max-width: 600px) {
+    width: 36px;
+    height: 36px;
+  }
 `;
 
 const AgentDetails = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 4px;
 `;
 
-const AgentName = styled.div`
+const AgentName = styled.span`
   font-weight: 600;
   color: #1f2937;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
+
+  @media (max-width: 600px) {
+    font-size: 0.85rem;
+  }
 `;
 
-const AgentPhone = styled.div`
+const AgentPhone = styled.span`
   color: #6b7280;
   font-size: 0.85rem;
+
+  @media (max-width: 600px) {
+    font-size: 0.8rem;
+  }
 `;
+
+export default PropertyCard;
