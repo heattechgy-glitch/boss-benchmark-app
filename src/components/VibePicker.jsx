@@ -17,10 +17,17 @@ const VibePicker = ({ onVibeSelect, selectedVibe }) => {
 
   useEffect(() => {
     localStorage.setItem('darkMode', JSON.stringify(darkMode));
+    // Apply CSS variables for dark mode
     if (darkMode) {
-      document.body.classList.add('dark-mode');
+      document.documentElement.style.setProperty('--background', '#1a1a1a');
+      document.documentElement.style.setProperty('--text', '#f0f0f0');
+      document.documentElement.style.setProperty('--card-bg', '#2d2d2d');
+      document.documentElement.style.setProperty('--border', '#444');
     } else {
-      document.body.classList.remove('dark-mode');
+      document.documentElement.style.setProperty('--background', '#ffffff');
+      document.documentElement.style.setProperty('--text', '#333333');
+      document.documentElement.style.setProperty('--card-bg', '#f9f9f9');
+      document.documentElement.style.setProperty('--border', '#e0e0e0');
     }
   }, [darkMode]);
 
@@ -35,7 +42,7 @@ const VibePicker = ({ onVibeSelect, selectedVibe }) => {
   };
 
   return (
-    <div className={`vibe-picker ${darkMode ? 'dark' : 'light'}`}>
+    <div className="vibe-picker">
       <div className="vibe-picker-header">
         <h2>Pick Your Vibe</h2>
         <button
