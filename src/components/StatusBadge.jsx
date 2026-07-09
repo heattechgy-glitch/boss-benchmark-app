@@ -21,22 +21,48 @@ const StatusBadge = ({ status, tier }) => {
   };
 
   const getTierVariant = () => {
-    if (tier === 'premium') {
-      return 'premium-badge';
+    switch (tier) {
+      case 'premium':
+        return 'premium-badge';
+      case 'premium-plus':
+        return 'premium-plus-badge';
+      case 'enterprise':
+        return 'enterprise-badge';
+      default:
+        return '';
     }
-    return '';
   };
 
   const getTierLabel = () => {
-    if (tier === 'premium') {
-      return 'Premium';
+    switch (tier) {
+      case 'premium':
+        return 'Premium';
+      case 'premium-plus':
+        return 'Premium+';
+      case 'enterprise':
+        return 'Enterprise';
+      default:
+        return '';
     }
-    return '';
+  };
+
+  const getTierIcon = () => {
+    switch (tier) {
+      case 'premium':
+        return '⭐';
+      case 'premium-plus':
+        return '💎';
+      case 'enterprise':
+        return '👑';
+      default:
+        return null;
+    }
   };
 
   const statusColor = getStatusColor();
   const tierVariant = getTierVariant();
   const tierLabel = getTierLabel();
+  const tierIcon = getTierIcon();
 
   return (
     <div className={`status-badge ${tierVariant}`}>
@@ -50,6 +76,7 @@ const StatusBadge = ({ status, tier }) => {
       </div>
       {tierLabel && (
         <div className="tier-label">
+          {tierIcon && <span className="tier-icon">{tierIcon}</span>}
           {tierLabel}
         </div>
       )}
@@ -59,7 +86,7 @@ const StatusBadge = ({ status, tier }) => {
 
 StatusBadge.propTypes = {
   status: PropTypes.string.isRequired,
-  tier: PropTypes.string
+  tier: PropTypes.oneOf(['', 'premium', 'premium-plus', 'enterprise'])
 };
 
 StatusBadge.defaultProps = {
