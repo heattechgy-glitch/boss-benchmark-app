@@ -1,7 +1,14 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import './ChatMessages.css';
 import useChatStore from '../stores/chatStore';
+
+const BUFFER_SIZE = 5;
+const DEFAULT_ITEM_HEIGHT = 80;
+const LONG_MESSAGE_HEIGHT = 120;
+const LONG_MESSAGE_THRESHOLD = 100;
+const SCROLL_DEBOUNCE_MS = 100;
+const MEASURE_DELAY_MS = 100;
 
 const ChatMessages = ({ conversationId }) => {
   const messagesEndRef = useRef(null);
@@ -29,37 +36,75 @@ const ChatMessages = ({ conversationId }) => {
   const [itemHeights, setItemHeights] = useState({});
   const itemRefs = useRef({});
   
+  // Memoized function to estimate message height
+  const estimateMessageHeight = useCallback((message) => {
+    if (itemHeights[message.id]) {
+      return itemHeights[message.id];
+    }
+    return message.content.length > LONG_MESSAGE_THRESHOLD ? LONG_MESSAGE_HEIGHT : DEFAULT_ITEM_HEIGHT;
+  }, [itemHeights]);
+  
   // Calculate total height for virtualization
-  const calculateTotalHeight = useCallback(() => {
+  const totalHeight = useMemo(() => {
     if (messages.length === 0) return 0;
     
-    let total = 0;
-    for (let i = 0; i < messages.length; i++) {
-      const messageId = messages[i].id;
-      if (itemHeights[messageId]) {
-        total += itemHeights[messageId];
-      } else {
-        // Default estimated height if not measured yet
-        total += messages[i].content.length > 100 ? 120 : 80;
-      }
-    }
-    return total;
-  }, [messages, itemHeights]);
+    return messages.reduce((total, message) => {
+      return total + estimateMessageHeight(message);
+    }, 0);
+  }, [messages, estimateMessageHeight]);
   
   // Measure message element heights
   const measureMessageHeights = useCallback(() => {
     const newHeights = {};
+    let hasChanges = false;
+    
     Object.keys(itemRefs.current).forEach(messageId => {
       const element = itemRefs.current[messageId];
       if (element) {
-        newHeights[messageId] = element.getBoundingClientRect().height;
+        const height = element.getBoundingClientRect().height;
+        if (height !== itemHeights[messageId]) {
+          newHeights[messageId] = height;
+          hasChanges = true;
+        }
       }
     });
     
-    if (Object.keys(newHeights).length > 0) {
+    if (hasChanges) {
       setItemHeights(prev => ({ ...prev, ...newHeights }));
     }
-  }, []);
+  }, [itemHeights]);
+  
+  // Build height offset map for efficient scroll position lookup
+  const heightOffsetMap = useMemo(() => {
+    const offsets = [];
+    let currentOffset = 0;
+    
+    for (let i = 0; i < messages.length; i++) {
+      offsets.push(currentOffset);
+      currentOffset += estimateMessageHeight(messages[i]);
+    }
+    
+    return offsets;
+  }, [messages, estimateMessageHeight]);
+  
+  // Binary search to find start index for given scroll position
+  const findStartIndex = useCallback((scrollTop) => {
+    if (heightOffsetMap.length === 0) return 0;
+    
+    let low = 0;
+    let high = heightOffsetMap.length - 1;
+    
+    while (low < high) {
+      const mid = Math.floor((low + high) / 2);
+      if (heightOffsetMap[mid] < scrollTop) {
+        low = mid + 1;
+      } else {
+        high = mid;
+      }
+    }
+    
+    return Math.max(0, low - 1);
+  }, [heightOffsetMap]);
   
   // Handle scroll for virtualization
   const handleScroll = useCallback(() => {
@@ -69,36 +114,37 @@ const ChatMessages = ({ conversationId }) => {
     const scrollTop = container.scrollTop;
     const clientHeight = container.clientHeight;
     
-    // Simple virtualization: calculate which messages are visible
-    // This is a placeholder for full virtualization implementation
-    let currentHeight = 0;
-    let startIndex = 0;
-    let endIndex = 0;
+    // Use binary search for efficient index lookup
+    const startIndex = Math.max(0, findStartIndex(scrollTop) - BUFFER_SIZE);
     
-    for (let i = 0; i < messages.length; i++) {
-      const messageId = messages[i].id;
-      const itemHeight = itemHeights[messageId] || (messages[i].content.length > 100 ? 120 : 80);
-      
-      if (currentHeight + itemHeight > scrollTop && startIndex === 0) {
-        startIndex = Math.max(0, i - 5); // Buffer before
-      }
-      
-      if (currentHeight < scrollTop + clientHeight) {
-        endIndex = Math.min(messages.length - 1, i + 10); // Buffer after
-      }
-      
-      currentHeight += itemHeight;
+    // Find end index
+    let endIndex = startIndex;
+    let currentHeight = heightOffsetMap[startIndex] || 0;
+    const viewportEnd = scrollTop + clientHeight;
+    
+    while (endIndex < messages.length && currentHeight < viewportEnd) {
+      currentHeight += estimateMessageHeight(messages[endIndex]);
+      endIndex++;
     }
     
-    setVisibleRange({ start: startIndex, end: endIndex });
+    endIndex = Math.min(messages.length - 1, endIndex + BUFFER_SIZE);
+    
+    setVisibleRange(prev => {
+      if (prev.start === startIndex && prev.end === endIndex) {
+        return prev;
+      }
+      return { start: startIndex, end: endIndex };
+    });
     
     // Mark messages as read when they come into view
-    const visibleMessages = messages.slice(startIndex, endIndex + 1);
-    visibleMessages.forEach(msg => {
-      if (!msg.isRead) {
-        markMessagesAsRead([msg.id]);
-      }
-    });
+    const unreadMessages = messages
+      .slice(startIndex, endIndex + 1)
+      .filter(msg => !msg.isRead)
+      .map(msg => msg.id);
+    
+    if (unreadMessages.length > 0) {
+      markMessagesAsRead(unreadMessages);
+    }
     
     // Track scrolling state for smooth behavior
     setIsScrolling(true);
@@ -108,8 +154,8 @@ const ChatMessages = ({ conversationId }) => {
     scrollTimeoutRef.current = setTimeout(() => {
       setIsScrolling(false);
       setScrollBehavior('smooth');
-    }, 100);
-  }, [messages, itemHeights, markMessagesAsRead]);
+    }, SCROLL_DEBOUNCE_MS);
+  }, [messages, estimateMessageHeight, heightOffsetMap, findStartIndex, markMessagesAsRead]);
   
   // Scroll to bottom function
   const scrollToBottom = useCallback((behavior = 'smooth') => {
@@ -129,19 +175,19 @@ const ChatMessages = ({ conversationId }) => {
       // Small delay to ensure DOM is rendered before measuring
       const measureTimer = setTimeout(() => {
         measureMessageHeights();
-      }, 100);
+      }, MEASURE_DELAY_MS);
       
       return () => clearTimeout(measureTimer);
     }
   }, [messages.length, scrollToBottom, measureMessageHeights]);
   
-  // Setup scroll listener
+  // Setup scroll listener with passive option for better performance
   useEffect(() => {
     const container = messagesContainerRef.current;
     if (!container) return;
     
     const handleScrollEvent = () => handleScroll();
-    container.addEventListener('scroll', handleScrollEvent);
+    container.addEventListener('scroll', handleScrollEvent, { passive: true });
     
     // Initial visible range calculation
     handleScroll();
@@ -154,210 +200,165 @@ const ChatMessages = ({ conversationId }) => {
     };
   }, [handleScroll]);
   
-  // Measure container height
+  // Measure container height with ResizeObserver for better performance
   useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+    
     const updateContainerHeight = () => {
-      if (messagesContainerRef.current) {
-        setContainerHeight(messagesContainerRef.current.clientHeight);
-      }
+      setContainerHeight(container.clientHeight);
     };
     
     updateContainerHeight();
-    window.addEventListener('resize', updateContainerHeight);
     
-    return () => window.removeEventListener('resize', updateContainerHeight);
+    // Use ResizeObserver if available for better performance
+    if (typeof ResizeObserver !== 'undefined') {
+      const resizeObserver = new ResizeObserver(updateContainerHeight);
+      resizeObserver.observe(container);
+      return () => resizeObserver.disconnect();
+    } else {
+      window.addEventListener('resize', updateContainerHeight);
+      return () => window.removeEventListener('resize', updateContainerHeight);
+    }
   }, []);
   
   // Handle message actions
-  const handleDeleteMessage = (messageId) => {
+  const handleDeleteMessage = useCallback((messageId) => {
     if (window.confirm('Are you sure you want to delete this message?')) {
       deleteMessage(messageId);
     }
-  };
+  }, [deleteMessage]);
   
-  const handleEditMessage = (messageId, newContent) => {
+  const handleEditMessage = useCallback((messageId, newContent) => {
     editMessage(messageId, newContent);
     // Re-measure heights after edit
     setTimeout(measureMessageHeights, 50);
-  };
+  }, [editMessage, measureMessageHeights]);
   
-  const handleReaction = (messageId, emoji) => {
+  const handleReaction = useCallback((messageId, emoji) => {
     const messageReactions = reactions[messageId] || [];
-    const userReaction = messageReactions.find(r => r.userId === 'current-user');
+    const userReaction = messageReactions.find(r => r.userId === 'currentUser' && r.emoji === emoji);
     
     if (userReaction) {
-      removeReaction(messageId, userReaction.id);
+      removeReaction(messageId, 'currentUser', emoji);
     } else {
-      addReaction(messageId, {
-        id: `reaction-${Date.now()}`,
-        emoji,
-        userId: 'current-user',
-        timestamp: new Date().toISOString()
-      });
+      addReaction(messageId, 'currentUser', emoji);
     }
-  };
+  }, [reactions, addReaction, removeReaction]);
   
-  // Render message with virtualization prep
-  const renderMessage = (message, index) => {
-    const messageReactions = reactions[message.id] || [];
-    const isVisible = index >= visibleRange.start && index <= visibleRange.end;
-    
-    // For virtualization, we'll render all messages but hide non-visible ones
-    // In production, this would only render visible messages
+  // Register item ref for height measurement
+  const setItemRef = useCallback((messageId, element) => {
+    if (element) {
+      itemRefs.current[messageId] = element;
+    } else {
+      delete itemRefs.current[messageId];
+    }
+  }, []);
+  
+  // Get visible messages for rendering
+  const visibleMessages = useMemo(() => {
+    return messages.slice(visibleRange.start, visibleRange.end + 1);
+  }, [messages, visibleRange]);
+  
+  // Calculate spacer heights for virtualization
+  const topSpacerHeight = useMemo(() => {
+    return heightOffsetMap[visibleRange.start] || 0;
+  }, [heightOffsetMap, visibleRange.start]);
+  
+  const bottomSpacerHeight = useMemo(() => {
+    if (messages.length === 0) return 0;
+    const endOffset = heightOffsetMap[visibleRange.end] || 0;
+    const endHeight = estimateMessageHeight(messages[visibleRange.end]);
+    return Math.max(0, totalHeight - endOffset - endHeight);
+  }, [messages, heightOffsetMap, visibleRange.end, totalHeight, estimateMessageHeight]);
+  
+  if (isLoadingMessages) {
     return (
-      <div 
-        key={message.id}
-        ref={el => itemRefs.current[message.id] = el}
-        className={`message-wrapper ${isVisible ? '' : 'virtual-hidden'}`}
-        data-message-index={index}
-      >
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-          className={`message ${message.senderId === 'user1' ? 'sent' : 'received'}`}
-        >
-          <div className="message-content">
-            <p>{message.content}</p>
-            <div className="message-meta">
-              <span className="timestamp">
-                {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </span>
-              {message.isEdited && <span className="edited">(edited)</span>}
-              {message.senderId === 'user1' && (
-                <span className={`read-status ${message.isRead ? 'read' : 'unread'}`}>
-                  {message.isRead ? '✓✓' : '✓'}
-                </span>
-              )}
-            </div>
-          </div>
-          
-          <div className="message-actions">
-            {message.senderId === 'user1' && (
-              <>
-                <button 
-                  className="action-btn edit-btn"
-                  onClick={() => {
-                    const newContent = prompt('Edit message:', message.content);
-                    if (newContent && newContent !== message.content) {
-                      handleEditMessage(message.id, newContent);
-                    }
-                  }}
-                >
-                  Edit
-                </button>
-                <button 
-                  className="action-btn delete-btn"
-                  onClick={() => handleDeleteMessage(message.id)}
-                >
-                  Delete
-                </button>
-              </>
-            )}
-            <div className="reactions">
-              {['👍', '❤️', '😂', '😮', '😢'].map(emoji => (
-                <button
-                  key={emoji}
-                  className={`reaction-btn ${messageReactions.some(r => r.emoji === emoji && r.userId === 'current-user') ? 'active' : ''}`}
-                  onClick={() => handleReaction(message.id, emoji)}
-                >
-                  {emoji}
-                  <span className="reaction-count">
-                    {messageReactions.filter(r => r.emoji === emoji).length || ''}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-          
-          {messageReactions.length > 0 && (
-            <div className="message-reactions">
-              {messageReactions.map(reaction => (
-                <span key={reaction.id} className="reaction-badge">
-                  {reaction.emoji}
-                </span>
-              ))}
-            </div>
-          )}
-        </motion.div>
+      <div className="chat-messages-loading">
+        <div className="loading-spinner" />
+        <span>Loading messages...</span>
       </div>
     );
-  };
+  }
   
-  // Virtualization: calculate padding for non-visible items
-  const calculateVirtualPadding = () => {
-    let topPadding = 0;
-    let bottomPadding = 0;
-    
-    // Calculate top padding (height of messages before visible range)
-    for (let i = 0; i < visibleRange.start; i++) {
-      const messageId = messages[i].id;
-      topPadding += itemHeights[messageId] || (messages[i].content.length > 100 ? 120 : 80);
-    }
-    
-    // Calculate bottom padding (height of messages after visible range)
-    for (let i = visibleRange.end + 1; i < messages.length; i++) {
-      const messageId = messages[i].id;
-      bottomPadding += itemHeights[messageId] || (messages[i].content.length > 100 ? 120 : 80);
-    }
-    
-    return { topPadding, bottomPadding };
-  };
-  
-  const { topPadding, bottomPadding } = calculateVirtualPadding();
+  if (messages.length === 0) {
+    return (
+      <div className="chat-messages-empty">
+        <span>No messages yet. Start the conversation!</span>
+      </div>
+    );
+  }
   
   return (
     <div 
-      className={`chat-messages ${isScrolling ? 'scrolling' : ''}`}
-      ref={messagesContainerRef}
-      data-testid="chat-messages-container"
+      ref={messagesContainerRef} 
+      className="chat-messages-container"
+      role="log"
+      aria-live="polite"
     >
-      <div className="messages-list">
-        {/* Top padding for virtualization */}
-        <div style={{ height: `${topPadding}px` }} className="virtual-padding" />
-        
-        <AnimatePresence>
-          {messages.map((message, index) => renderMessage(message, index))}
-        </AnimatePresence>
-        
-        {/* Bottom padding for virtualization */}
-        <div style={{ height: `${bottomPadding}px` }} className="virtual-padding" />
-        
-        <div ref={messagesEndRef} />
-      </div>
+      {/* Top spacer for virtualization */}
+      <div style={{ height: topSpacerHeight }} aria-hidden="true" />
       
-      {isLoadingMessages && (
-        <div className="loading-overlay">
-          <div className="loading-spinner">Loading messages...</div>
-        </div>
-      )}
+      <AnimatePresence initial={false}>
+        {visibleMessages.map((message, index) => (
+          <motion.div
+            key={message.id}
+            ref={(el) => setItemRef(message.id, el)}
+            className={`chat-message ${message.isOwn ? 'own' : 'other'}`}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            transition={{ duration: 0.2 }}
+          >
+            <div className="message-content">
+              <p>{message.content}</p>
+              <span className="message-time">
+                {new Date(message.timestamp).toLocaleTimeString()}
+              </span>
+            </div>
+            <div className="message-actions">
+              <button 
+                onClick={() => handleReaction(message.id, '👍')}
+                aria-label="Like message"
+              >
+                👍
+              </button>
+              {message.isOwn && (
+                <>
+                  <button 
+                    onClick={() => handleEditMessage(message.id, prompt('Edit message:', message.content))}
+                    aria-label="Edit message"
+                  >
+                    ✏️
+                  </button>
+                  <button 
+                    onClick={() => handleDeleteMessage(message.id)}
+                    aria-label="Delete message"
+                  >
+                    🗑️
+                  </button>
+                </>
+              )}
+            </div>
+            {reactions[message.id]?.length > 0 && (
+              <div className="message-reactions">
+                {reactions[message.id].map((reaction, idx) => (
+                  <span key={`${reaction.userId}-${reaction.emoji}-${idx}`}>
+                    {reaction.emoji}
+                  </span>
+                ))}
+              </div>
+            )}
+          </motion.div>
+        ))}
+      </AnimatePresence>
       
-      {/* Scroll to bottom button */}
-      {messagesContainerRef.current && 
-       messagesContainerRef.current.scrollHeight - messagesContainerRef.current.scrollTop > 
-       messagesContainerRef.current.clientHeight + 100 && (
-        <button 
-          className="scroll-to-bottom-btn"
-          onClick={() => scrollToBottom('smooth')}
-        >
-          ↓
-        </button>
-      )}
+      {/* Bottom spacer for virtualization */}
+      <div style={{ height: bottomSpacerHeight }} aria-hidden="true" />
       
-      {/* Virtualization debug info (remove in production) */}
-      <div className="virtualization-info">
-        <small>
-          Showing {Math.min(messages.length, visibleRange.end - visibleRange.start + 1)} of {messages.length} messages
-          | Range: {visibleRange.start}-{visibleRange.end}
-          | Container: {Math.round(containerHeight)}px
-        </small>
-      </div>
+      <div ref={messagesEndRef} />
     </div>
   );
 };
 
-ChatMessages.propTypes = {
-  conversationId: PropTypes.string.isRequired
-};
-
-export default ChatMessages;
+export default React.memo(ChatMessages);
