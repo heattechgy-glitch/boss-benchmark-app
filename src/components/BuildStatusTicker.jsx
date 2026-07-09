@@ -99,10 +99,12 @@ export const BuildStatusTicker = ({ projectId }) => {
             leftIcon={isDeploying ? <Spinner size="sm" /> : <FiPlay />}
             onClick={handleDeploy}
             isDisabled={buildStatus === 'building' || isDeploying}
+            isLoading={isDeploying}
+            loadingText="Deploying..."
             colorScheme="blue"
             size="sm"
           >
-            {isDeploying ? 'Deploying...' : 'Deploy'}
+            Deploy
           </Button>
         </HStack>
 
