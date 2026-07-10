@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Dialog } from '@headlessui/react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { scheduleTask } from '../utils/api';
-import { format } from 'date-fns';
+import { format, addYears } from 'date-fns';
 import { toast } from 'react-hot-toast';
 
 const ScheduleModal = ({ isOpen, onClose, taskId, onScheduleSuccess }) => {
@@ -10,10 +10,40 @@ const ScheduleModal = ({ isOpen, onClose, taskId, onScheduleSuccess }) => {
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const maxDate = useMemo(() => {
+    const oneYearFromNow = addYears(new Date(), 1);
+    return format(oneYearFromNow, "yyyy-MM-dd'T'HH:mm");
+  }, []);
+
+  const minDate = useMemo(() => {
+    return format(new Date(), "yyyy-MM-dd'T'HH:mm");
+  }, []);
+
+  const handleDateChange = (e) => {
+    const selectedValue = e.target.value;
+    const selectedDate = new Date(selectedValue);
+    const maxAllowedDate = addYears(new Date(), 1);
+
+    if (selectedDate > maxAllowedDate) {
+      toast.error('Cannot schedule more than 1 year in the future');
+      return;
+    }
+
+    setScheduledTime(selectedValue);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!scheduledTime) {
       toast.error('Please select a scheduled time');
+      return;
+    }
+
+    const selectedDate = new Date(scheduledTime);
+    const maxAllowedDate = addYears(new Date(), 1);
+
+    if (selectedDate > maxAllowedDate) {
+      toast.error('Cannot schedule more than 1 year in the future');
       return;
     }
 
@@ -73,22 +103,27 @@ const ScheduleModal = ({ isOpen, onClose, taskId, onScheduleSuccess }) => {
                 type="datetime-local"
                 id="scheduledTime"
                 value={scheduledTime}
-                onChange={(e) => setScheduledTime(e.target.value)}
+                onChange={handleDateChange}
+                min={minDate}
+                max={maxDate}
                 className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                 required
               />
+              <p className="mt-1 text-xs text-gray-500">
+                Maximum scheduling date: 1 year from today
+              </p>
             </div>
 
             <div>
               <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1">
-                Notes (Optional)
+                Notes (optional)
               </label>
               <textarea
                 id="notes"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 rows={3}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 resize-none"
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                 placeholder="Add any notes about this scheduled task..."
               />
             </div>
@@ -98,14 +133,13 @@ const ScheduleModal = ({ isOpen, onClose, taskId, onScheduleSuccess }) => {
                 type="button"
                 onClick={handleClose}
                 className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                disabled={isSubmitting}
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 disabled={isSubmitting}
+                className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSubmitting ? 'Scheduling...' : 'Schedule Task'}
               </button>
