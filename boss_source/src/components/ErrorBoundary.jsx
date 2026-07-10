@@ -119,7 +119,7 @@ const styles = {
   icon: {
     width: '64px',
     height: '64px',
-    color: '#ef4444',
+    color: '#f59e0b',
     margin: '0 auto'
   },
   title: {
@@ -137,10 +137,9 @@ const styles = {
   details: {
     textAlign: 'left',
     marginBottom: '24px',
-    padding: '16px',
     backgroundColor: '#fef2f2',
     borderRadius: '6px',
-    border: '1px solid #fecaca'
+    padding: '12px'
   },
   summary: {
     cursor: 'pointer',
@@ -153,14 +152,15 @@ const styles = {
     color: '#7f1d1d',
     whiteSpace: 'pre-wrap',
     wordBreak: 'break-word',
-    marginTop: '12px',
+    margin: '8px 0 0 0',
     maxHeight: '200px',
     overflow: 'auto'
   },
   buttonContainer: {
     display: 'flex',
     gap: '12px',
-    justifyContent: 'center'
+    justifyContent: 'center',
+    flexWrap: 'wrap'
   },
   retryButton: {
     padding: '10px 24px',
