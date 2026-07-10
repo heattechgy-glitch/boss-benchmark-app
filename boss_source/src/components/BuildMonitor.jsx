@@ -211,61 +211,52 @@ const BuildMonitor = ({ buildId, onBuildComplete, onError, apiEndpoint = '/api/b
     return `build-step-status build-step-status--${status}`;
   };
 
+  const getRemainingRetries = (stepId) => {
+    const attempts = retryAttempts[stepId] || 0;
+    return MAX_RETRY_ATTEMPTS - attempts;
+  };
+
   if (isLoading) {
     return (
       <div className="build-monitor build-monitor--loading">
-        <div className="build-monitor__spinner" aria-label="Loading build status">
-          Loading...
-        </div>
+        <div className="build-monitor__spinner">Loading build status...</div>
       </div>
     );
   }
 
-  if (error && buildSteps.length === 0) {
+  if (error) {
     return (
       <div className="build-monitor build-monitor--error">
         <div className="build-monitor__error-message">
-          <span className="error-icon">⚠</span>
+          <span className="build-monitor__error-icon">⚠</span>
           <span>{error}</span>
         </div>
         <button 
           className="build-monitor__retry-button"
           onClick={() => {
             setError(null);
+            setIsLoading(true);
             fetchBuildStatus();
           }}
         >
-          Retry Loading
+          Retry
         </button>
       </div>
     );
   }
 
-  const failedStepsCount = buildSteps.filter(step => step.status === BuildStatus.FAILED).length;
-
   return (
-    <div className="build-monitor" data-build-id={buildId}>
+    <div className="build-monitor">
       <div className="build-monitor__header">
-        <h2 className="build-monitor__title">Build Monitor</h2>
-        <div className={`build-monitor__overall-status ${getStatusClass(overallStatus)}`}>
-          <span className="status-icon">{getStatusIcon(overallStatus)}</span>
-          <span className="status-text">{overallStatus.toUpperCase()}</span>
-        </div>
+        <h2 className="build-monitor__title">Build #{buildId}</h2>
+        <span className={`build-monitor__overall-status build-monitor__overall-status--${overallStatus}`}>
+          {getStatusIcon(overallStatus)} {overallStatus.toUpperCase()}
+        </span>
       </div>
 
-      {error && (
-        <div className="build-monitor__error-banner">
-          {error}
-        </div>
-      )}
-
       <div className="build-monitor__steps">
-        {buildSteps.map((step) => (
-          <div 
-            key={step.id} 
-            className={`build-step ${getStatusClass(step.status)}`}
-            data-step-id={step.id}
-          >
+        {buildSteps.map(step => (
+          <div key={step.id} className={`build-step ${getStatusClass(step.status)}`}>
             <div className="build-step__info">
               <span className="build-step__icon">{getStatusIcon(step.status)}</span>
               <span className="build-step__name">{step.name}</span>
@@ -277,16 +268,16 @@ const BuildMonitor = ({ buildId, onBuildComplete, onError, apiEndpoint = '/api/b
             </div>
             
             <div className="build-step__actions">
-              {step.status === BuildStatus.FAILED && (
+              {step.status === BuildStatus.FAILED && getRemainingRetries(step.id) > 0 && (
                 <button
                   className="build-step__retry-button"
                   onClick={() => retryStep(step.id)}
-                  disabled={(retryAttempts[step.id] || 0) >= MAX_RETRY_ATTEMPTS}
-                  title={`Retry step (${MAX_RETRY_ATTEMPTS - (retryAttempts[step.id] || 0)} attempts remaining)`}
+                  title={`${getRemainingRetries(step.id)} retries remaining`}
                 >
-                  Retry
+                  Retry ({getRemainingRetries(step.id)} left)
                 </button>
               )}
+              
               {step.status === BuildStatus.RETRYING && (
                 <button
                   className="build-step__cancel-button"
@@ -295,49 +286,49 @@ const BuildMonitor = ({ buildId, onBuildComplete, onError, apiEndpoint = '/api/b
                   Cancel
                 </button>
               )}
+              
+              {step.status === BuildStatus.CANCELLED && (
+                <button
+                  className="build-step__reset-button"
+                  onClick={() => resetRetryAttempts(step.id)}
+                >
+                  Reset
+                </button>
+              )}
             </div>
 
             {step.error && (
               <div className="build-step__error">
-                {step.error}
+                <span className="build-step__error-label">Error:</span> {step.error}
               </div>
             )}
 
-            {step.duration && (
-              <div className="build-step__duration">
-                {step.duration}ms
+            {step.lastRetryAt && (
+              <div className="build-step__last-retry">
+                Last retry: {new Date(step.lastRetryAt).toLocaleTimeString()}
               </div>
             )}
           </div>
         ))}
       </div>
 
-      <div className="build-monitor__footer">
-        {failedStepsCount > 0 && (
+      {buildSteps.some(step => step.status === BuildStatus.FAILED) && (
+        <div className="build-monitor__actions">
           <button
             className="build-monitor__retry-all-button"
             onClick={retryFailedSteps}
             disabled={overallStatus === BuildStatus.RETRYING}
           >
-            Retry All Failed Steps ({failedStepsCount})
+            {overallStatus === BuildStatus.RETRYING ? 'Retrying...' : 'Retry All Failed Steps'}
           </button>
-        )}
-        <button
-          className="build-monitor__refresh-button"
-          onClick={fetchBuildStatus}
-          disabled={isLoading}
-        >
-          Refresh Status
-        </button>
-        {Object.keys(retryAttempts).length > 0 && (
           <button
             className="build-monitor__reset-button"
             onClick={() => resetRetryAttempts()}
           >
-            Reset Retry Counts
+            Reset All Retry Counts
           </button>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -350,4 +341,3 @@ BuildMonitor.propTypes = {
 };
 
 export default BuildMonitor;
-export { BuildStatus, MAX_RETRY_ATTEMPTS, RETRY_DELAY_MS };
