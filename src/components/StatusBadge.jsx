@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import PropTypes from 'prop-types';
 import './StatusBadge.css';
 
 const StatusBadge = ({ status, tier }) => {
+  const [showTooltip, setShowTooltip] = useState(false);
+
   const getStatusColor = () => {
     switch (status) {
       case 'active':
@@ -17,6 +19,23 @@ const StatusBadge = ({ status, tier }) => {
         return 'red';
       default:
         return 'blue';
+    }
+  };
+
+  const getStatusDescription = () => {
+    switch (status) {
+      case 'active':
+        return 'This item is currently active and functioning normally.';
+      case 'inactive':
+        return 'This item is currently inactive and not in use.';
+      case 'pending':
+        return 'This item is pending approval or processing.';
+      case 'warning':
+        return 'This item requires attention due to a potential issue.';
+      case 'error':
+        return 'This item has encountered an error and needs immediate attention.';
+      default:
+        return `Current status: ${status}`;
     }
   };
 
@@ -60,17 +79,21 @@ const StatusBadge = ({ status, tier }) => {
   };
 
   const statusColor = getStatusColor();
+  const statusDescription = getStatusDescription();
   const tierVariant = getTierVariant();
   const tierLabel = getTierLabel();
   const tierIcon = getTierIcon();
 
   return (
-    <div className={`status-badge ${tierVariant}`}>
+    <div 
+      className={`status-badge ${tierVariant}`}
+      onMouseEnter={() => setShowTooltip(true)}
+      onMouseLeave={() => setShowTooltip(false)}
+    >
       <div className="status-indicator">
         <span 
           className="status-dot" 
           style={{ backgroundColor: statusColor }}
-          title={status}
         />
         <span className="status-text">{status}</span>
       </div>
@@ -78,6 +101,11 @@ const StatusBadge = ({ status, tier }) => {
         <div className="tier-label">
           {tierIcon && <span className="tier-icon">{tierIcon}</span>}
           {tierLabel}
+        </div>
+      )}
+      {showTooltip && (
+        <div className="status-tooltip">
+          {statusDescription}
         </div>
       )}
     </div>
