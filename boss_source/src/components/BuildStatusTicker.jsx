@@ -63,6 +63,11 @@ const BuildStatusTicker = ({ builds = [], refreshInterval = 30000 }) => {
   const overallCompletion = calculateOverallCompletion();
   const currentBuild = builds[currentIndex];
 
+  const completedCount = builds.filter(b => b.status === 'completed' || b.status === 'success').length;
+  const failedCount = builds.filter(b => b.status === 'failed' || b.status === 'error').length;
+  const inProgressCount = builds.filter(b => b.status === 'in_progress' || b.status === 'running').length;
+  const pendingCount = builds.filter(b => b.status === 'pending' || b.status === 'queued').length;
+
   if (!builds || builds.length === 0) {
     return (
       <div className="build-status-ticker">
@@ -88,60 +93,48 @@ const BuildStatusTicker = ({ builds = [], refreshInterval = 30000 }) => {
           />
         </div>
         <div className="progress-stats">
-          <span className="stat-item">
-            {builds.filter(b => b.status === 'completed' || b.status === 'success').length} completed
+          <span className="stat-item stat-completed">
+            {completedCount} Completed
           </span>
-          <span className="stat-item">
-            {builds.filter(b => b.status === 'in_progress' || b.status === 'running').length} in progress
+          <span className="stat-item stat-in-progress">
+            {inProgressCount} In Progress
           </span>
-          <span className="stat-item">
-            {builds.filter(b => b.status === 'failed' || b.status === 'error').length} failed
+          <span className="stat-item stat-failed">
+            {failedCount} Failed
+          </span>
+          <span className="stat-item stat-pending">
+            {pendingCount} Pending
           </span>
         </div>
       </div>
 
-      <div className="ticker-divider" />
-
-      <div className={`ticker-content ${isAnimating ? 'fade-out' : 'fade-in'}`}>
-        <div className="ticker-header">
-          <span className="ticker-title">Build Status</span>
-          <span className="ticker-count">
-            {currentIndex + 1} / {builds.length}
-          </span>
-        </div>
-        
+      <div className={`ticker-content ${isAnimating ? 'ticker-animating' : ''}`}>
         {currentBuild && (
-          <div className="ticker-build">
-            <div className="build-info">
-              <span className="build-name">{currentBuild.name || currentBuild.id}</span>
-              <span 
-                className="build-status"
-                style={{ color: getStatusColor(currentBuild.status) }}
-              >
-                {currentBuild.status}
-              </span>
-            </div>
-            {currentBuild.message && (
-              <div className="build-message">{currentBuild.message}</div>
-            )}
-            {currentBuild.timestamp && (
-              <div className="build-timestamp">
-                {new Date(currentBuild.timestamp).toLocaleString()}
-              </div>
+          <div className="ticker-item">
+            <span
+              className="ticker-status-indicator"
+              style={{ backgroundColor: getStatusColor(currentBuild.status) }}
+            />
+            <span className="ticker-build-name">{currentBuild.name || 'Unknown Build'}</span>
+            <span className="ticker-build-status">{currentBuild.status}</span>
+            {currentBuild.progress !== undefined && (
+              <span className="ticker-build-progress">{currentBuild.progress}%</span>
             )}
           </div>
         )}
       </div>
 
-      <div className="ticker-indicators">
-        {builds.map((_, index) => (
-          <span
-            key={index}
-            className={`indicator ${index === currentIndex ? 'active' : ''}`}
-            onClick={() => setCurrentIndex(index)}
-          />
-        ))}
-      </div>
+      {builds.length > 1 && (
+        <div className="ticker-indicators">
+          {builds.map((_, index) => (
+            <span
+              key={index}
+              className={`ticker-indicator ${index === currentIndex ? 'active' : ''}`}
+              onClick={() => setCurrentIndex(index)}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 };
@@ -149,12 +142,9 @@ const BuildStatusTicker = ({ builds = [], refreshInterval = 30000 }) => {
 BuildStatusTicker.propTypes = {
   builds: PropTypes.arrayOf(
     PropTypes.shape({
-      id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
       name: PropTypes.string,
-      status: PropTypes.string,
-      progress: PropTypes.number,
-      message: PropTypes.string,
-      timestamp: PropTypes.oneOfType([PropTypes.string, PropTypes.number, PropTypes.instanceOf(Date)])
+      status: PropTypes.string.isRequired,
+      progress: PropTypes.number
     })
   ),
   refreshInterval: PropTypes.number
