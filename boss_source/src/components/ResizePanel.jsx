@@ -115,7 +115,7 @@ const ResizePanel = ({
       <button
         className={`resize-panel__toggle resize-panel__toggle--${direction}`}
         onClick={toggleCollapse}
-        aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        aria-label={isCollapsed ? 'Expand panel' : 'Collapse panel'}
         aria-expanded={!isCollapsed}
       >
         <span className="resize-panel__toggle-icon">
