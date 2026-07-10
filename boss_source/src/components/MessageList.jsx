@@ -95,21 +95,14 @@ const MessageList = ({ messages, onMessageSelect, selectedMessageId, onMessageDe
     }
   }, [onMessageSelect]);
 
-  const handleMessageKeyDown = useCallback((event, messageId, index) => {
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      if (onMessageSelect) {
-        onMessageSelect(messageId);
-      }
-    } else {
-      handleKeyDown(event);
-    }
-  }, [onMessageSelect, handleKeyDown]);
+  const setMessageRef = useCallback((el, index) => {
+    messageRefs.current[index] = el;
+  }, []);
 
   if (!messages || messages.length === 0) {
     return (
       <div className="message-list message-list--empty" role="list" aria-label="Messages">
-        <p className="message-list__empty-text">No messages to display</p>
+        <p className="message-list__empty-text">No messages yet</p>
       </div>
     );
   }
@@ -128,22 +121,24 @@ const MessageList = ({ messages, onMessageSelect, selectedMessageId, onMessageDe
         <div
           key={message.id}
           id={`message-${message.id}`}
-          ref={el => messageRefs.current[index] = el}
+          ref={(el) => setMessageRef(el, index)}
           role="option"
-          aria-selected={selectedMessageId === message.id}
-          tabIndex={selectedMessageId === message.id ? 0 : -1}
-          className={`message-list__item ${
-            selectedMessageId === message.id ? 'message-list__item--selected' : ''
-          }`}
+          aria-selected={message.id === selectedMessageId}
+          tabIndex={message.id === selectedMessageId ? 0 : -1}
+          className={`message-list__item ${message.id === selectedMessageId ? 'message-list__item--selected' : ''}`}
           onClick={() => handleMessageClick(message.id)}
-          onKeyDown={(e) => handleMessageKeyDown(e, message.id, index)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              handleMessageClick(message.id);
+            }
+          }}
         >
           <Message
-            id={message.id}
-            content={message.content}
-            author={message.author}
-            timestamp={message.timestamp}
-            isSelected={selectedMessageId === message.id}
+            message={message}
+            isSelected={message.id === selectedMessageId}
+            onDelete={onMessageDelete}
+            onEdit={onMessageEdit}
           />
         </div>
       ))}
@@ -155,8 +150,9 @@ MessageList.propTypes = {
   messages: PropTypes.arrayOf(
     PropTypes.shape({
       id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
-      content: PropTypes.string.isRequired,
-      author: PropTypes.string,
+      content: PropTypes.string,
+      text: PropTypes.string,
+      sender: PropTypes.string,
       timestamp: PropTypes.oneOfType([PropTypes.string, PropTypes.number, PropTypes.instanceOf(Date)])
     })
   ),
