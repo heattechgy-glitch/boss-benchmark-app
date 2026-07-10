@@ -271,185 +271,165 @@ const FeedbackModal = ({ isOpen, onClose, onSubmit }) => {
     }
   };
 
+  if (submitSuccess) {
+    return (
+      <div style={modalStyles.overlay} onClick={handleOverlayClick}>
+        <div style={modalStyles.modal}>
+          <div style={modalStyles.successMessage}>
+            <div style={modalStyles.successIcon}>✓</div>
+            <div style={modalStyles.successText}>Thank you for your feedback!</div>
+            <p>Your submission has been received successfully.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div
-      style={modalStyles.overlay}
-      onClick={handleOverlayClick}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="feedback-modal-title"
-    >
+    <div style={modalStyles.overlay} onClick={handleOverlayClick}>
       <div style={modalStyles.modal}>
         <div style={modalStyles.header}>
-          <h2 id="feedback-modal-title" style={modalStyles.title}>
-            Submit Feedback
-          </h2>
+          <h2 style={modalStyles.title}>Submit Feedback</h2>
           <button
             style={modalStyles.closeButton}
             onClick={handleClose}
             aria-label="Close modal"
-            type="button"
           >
             ×
           </button>
         </div>
 
-        {submitSuccess ? (
-          <div style={modalStyles.successMessage}>
-            <div style={modalStyles.successIcon}>✓</div>
-            <p style={modalStyles.successText}>Thank you for your feedback!</p>
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit}>
-            <div style={modalStyles.body}>
-              {errors.submit && (
-                <div style={{ ...modalStyles.errorText, marginBottom: '16px', textAlign: 'center' }}>
-                  {errors.submit}
-                </div>
-              )}
-
-              <div style={modalStyles.formGroup}>
-                <label htmlFor="category" style={modalStyles.label}>
-                  Category <span style={modalStyles.required}>*</span>
-                </label>
-                <select
-                  id="category"
-                  name="category"
-                  value={formData.category}
-                  onChange={handleChange}
-                  style={{
-                    ...modalStyles.select,
-                    ...(errors.category ? modalStyles.inputError : {})
-                  }}
-                  aria-describedby={errors.category ? 'category-error' : undefined}
-                >
-                  <option value="">Select a category</option>
-                  {categories.map((cat) => (
-                    <option key={cat.value} value={cat.value}>
-                      {cat.label}
-                    </option>
-                  ))}
-                </select>
-                {errors.category && (
-                  <div id="category-error" style={modalStyles.errorText}>
-                    {errors.category}
-                  </div>
-                )}
+        <form onSubmit={handleSubmit}>
+          <div style={modalStyles.body}>
+            {errors.submit && (
+              <div style={{ ...modalStyles.errorText, marginBottom: '16px', padding: '10px', backgroundColor: '#f8d7da', borderRadius: '4px' }}>
+                {errors.submit}
               </div>
+            )}
 
-              <div style={modalStyles.formGroup}>
-                <label htmlFor="subject" style={modalStyles.label}>
-                  Subject <span style={modalStyles.required}>*</span>
-                </label>
-                <input
-                  type="text"
-                  id="subject"
-                  name="subject"
-                  value={formData.subject}
-                  onChange={handleChange}
-                  placeholder="Brief summary of your feedback"
-                  style={{
-                    ...modalStyles.input,
-                    ...(errors.subject ? modalStyles.inputError : {})
-                  }}
-                  aria-describedby={errors.subject ? 'subject-error' : undefined}
-                />
-                {errors.subject && (
-                  <div id="subject-error" style={modalStyles.errorText}>
-                    {errors.subject}
-                  </div>
-                )}
-              </div>
-
-              <div style={modalStyles.formGroup}>
-                <label htmlFor="description" style={modalStyles.label}>
-                  Description <span style={modalStyles.required}>*</span>
-                </label>
-                <textarea
-                  id="description"
-                  name="description"
-                  value={formData.description}
-                  onChange={handleChange}
-                  placeholder="Please provide detailed information about your issue or suggestion..."
-                  style={{
-                    ...modalStyles.textarea,
-                    ...(errors.description ? modalStyles.inputError : {})
-                  }}
-                  aria-describedby={errors.description ? 'description-error' : undefined}
-                />
-                {errors.description && (
-                  <div id="description-error" style={modalStyles.errorText}>
-                    {errors.description}
-                  </div>
-                )}
-              </div>
-
-              <div style={modalStyles.formGroup}>
-                <label htmlFor="priority" style={modalStyles.label}>
-                  Priority
-                </label>
-                <select
-                  id="priority"
-                  name="priority"
-                  value={formData.priority}
-                  onChange={handleChange}
-                  style={modalStyles.select}
-                >
-                  {priorities.map((p) => (
-                    <option key={p.value} value={p.value}>
-                      {p.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div style={modalStyles.formGroup}>
-                <label htmlFor="email" style={modalStyles.label}>
-                  Email (optional)
-                </label>
-                <input
-                  type="email"
-                  id="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  placeholder="your@email.com"
-                  style={{
-                    ...modalStyles.input,
-                    ...(errors.email ? modalStyles.inputError : {})
-                  }}
-                  aria-describedby={errors.email ? 'email-error' : undefined}
-                />
-                {errors.email && (
-                  <div id="email-error" style={modalStyles.errorText}>
-                    {errors.email}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div style={modalStyles.footer}>
-              <button
-                type="button"
-                onClick={handleClose}
-                style={{ ...modalStyles.button, ...modalStyles.cancelButton }}
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={isSubmitting}
+            <div style={modalStyles.formGroup}>
+              <label style={modalStyles.label}>
+                Category <span style={modalStyles.required}>*</span>
+              </label>
+              <select
+                name="category"
+                value={formData.category}
+                onChange={handleChange}
                 style={{
-                  ...modalStyles.button,
-                  ...modalStyles.submitButton,
-                  ...(isSubmitting ? modalStyles.submitButtonDisabled : {})
+                  ...modalStyles.select,
+                  ...(errors.category ? modalStyles.inputError : {})
                 }}
               >
-                {isSubmitting ? 'Submitting...' : 'Submit Feedback'}
-              </button>
+                <option value="">Select a category</option>
+                {categories.map((cat) => (
+                  <option key={cat.value} value={cat.value}>
+                    {cat.label}
+                  </option>
+                ))}
+              </select>
+              {errors.category && (
+                <div style={modalStyles.errorText}>{errors.category}</div>
+              )}
             </div>
-          </form>
-        )}
+
+            <div style={modalStyles.formGroup}>
+              <label style={modalStyles.label}>
+                Subject <span style={modalStyles.required}>*</span>
+              </label>
+              <input
+                type="text"
+                name="subject"
+                value={formData.subject}
+                onChange={handleChange}
+                placeholder="Brief summary of your feedback"
+                style={{
+                  ...modalStyles.input,
+                  ...(errors.subject ? modalStyles.inputError : {})
+                }}
+              />
+              {errors.subject && (
+                <div style={modalStyles.errorText}>{errors.subject}</div>
+              )}
+            </div>
+
+            <div style={modalStyles.formGroup}>
+              <label style={modalStyles.label}>
+                Description <span style={modalStyles.required}>*</span>
+              </label>
+              <textarea
+                name="description"
+                value={formData.description}
+                onChange={handleChange}
+                placeholder="Please provide detailed information about your feedback, issue, or suggestion..."
+                style={{
+                  ...modalStyles.textarea,
+                  ...(errors.description ? modalStyles.inputError : {})
+                }}
+              />
+              {errors.description && (
+                <div style={modalStyles.errorText}>{errors.description}</div>
+              )}
+            </div>
+
+            <div style={modalStyles.formGroup}>
+              <label style={modalStyles.label}>Priority</label>
+              <select
+                name="priority"
+                value={formData.priority}
+                onChange={handleChange}
+                style={modalStyles.select}
+              >
+                {priorities.map((pri) => (
+                  <option key={pri.value} value={pri.value}>
+                    {pri.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div style={modalStyles.formGroup}>
+              <label style={modalStyles.label}>Email (optional)</label>
+              <input
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                placeholder="your@email.com"
+                style={{
+                  ...modalStyles.input,
+                  ...(errors.email ? modalStyles.inputError : {})
+                }}
+              />
+              {errors.email && (
+                <div style={modalStyles.errorText}>{errors.email}</div>
+              )}
+              <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+                Provide your email if you'd like us to follow up with you.
+              </div>
+            </div>
+          </div>
+
+          <div style={modalStyles.footer}>
+            <button
+              type="button"
+              onClick={handleClose}
+              style={{ ...modalStyles.button, ...modalStyles.cancelButton }}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              style={{
+                ...modalStyles.button,
+                ...modalStyles.submitButton,
+                ...(isSubmitting ? modalStyles.submitButtonDisabled : {})
+              }}
+            >
+              {isSubmitting ? 'Submitting...' : 'Submit Feedback'}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );
