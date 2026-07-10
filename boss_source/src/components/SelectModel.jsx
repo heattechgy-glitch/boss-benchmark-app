@@ -102,11 +102,11 @@ const SelectModel = ({ models, selectedModel, onModelChange, disabled, placehold
         break;
       case 'ArrowUp':
         event.preventDefault();
-        setHighlightedIndex(prev => (prev > 0 ? prev - 1 : 0));
+        setHighlightedIndex(prev => prev > 0 ? prev - 1 : 0);
         break;
       case 'Enter':
         event.preventDefault();
-        if (filteredModels[highlightedIndex]) {
+        if (filteredModels.length > 0 && filteredModels[highlightedIndex]) {
           handleSelectModel(filteredModels[highlightedIndex]);
         }
         break;
@@ -124,85 +124,80 @@ const SelectModel = ({ models, selectedModel, onModelChange, disabled, placehold
     }
   };
 
+  const handleSearchChange = (event) => {
+    setSearchTerm(event.target.value);
+  };
+
   return (
     <div 
       className={`select-model ${disabled ? 'select-model--disabled' : ''}`}
       ref={dropdownRef}
+      onKeyDown={handleKeyDown}
     >
-      <div
+      <div 
         className={`select-model__trigger ${isOpen ? 'select-model__trigger--open' : ''}`}
         onClick={handleToggle}
-        onKeyDown={handleKeyDown}
         tabIndex={disabled ? -1 : 0}
         role="combobox"
         aria-expanded={isOpen}
         aria-haspopup="listbox"
         aria-disabled={disabled}
       >
-        {isOpen ? (
-          <input
-            ref={inputRef}
-            type="text"
-            className="select-model__search"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Search models..."
-            onClick={(e) => e.stopPropagation()}
-            aria-label="Search models"
-          />
-        ) : (
-          <span className="select-model__value">
-            {selectedModelDisplay || placeholder || 'Select a model'}
-          </span>
-        )}
+        <span className="select-model__value">
+          {selectedModelDisplay || placeholder || 'Select a model'}
+        </span>
         <span className={`select-model__arrow ${isOpen ? 'select-model__arrow--up' : ''}`}>
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
-            <path d="M2.5 4.5L6 8L9.5 4.5" stroke="currentColor" strokeWidth="1.5" fill="none" />
-          </svg>
+          ▼
         </span>
       </div>
 
       {isOpen && (
-        <ul
-          ref={listRef}
-          className="select-model__dropdown"
-          role="listbox"
-          aria-label="Model options"
-        >
-          {filteredModels.length === 0 ? (
-            <li className="select-model__option select-model__option--empty">
-              No models found
-            </li>
-          ) : (
-            filteredModels.map((model, index) => {
-              const value = getModelValue(model);
-              const display = getModelDisplay(model);
-              const isSelected = value === selectedModel;
-              const isHighlighted = index === highlightedIndex;
+        <div className="select-model__dropdown">
+          <div className="select-model__search-container">
+            <input
+              ref={inputRef}
+              type="text"
+              className="select-model__search-input"
+              placeholder="Search models..."
+              value={searchTerm}
+              onChange={handleSearchChange}
+              onClick={(e) => e.stopPropagation()}
+              aria-label="Search models"
+            />
+          </div>
+          <ul 
+            className="select-model__list" 
+            ref={listRef}
+            role="listbox"
+            aria-label="Model options"
+          >
+            {filteredModels.length > 0 ? (
+              filteredModels.map((model, index) => {
+                const value = getModelValue(model);
+                const display = getModelDisplay(model);
+                const isSelected = value === selectedModel;
+                const isHighlighted = index === highlightedIndex;
 
-              return (
-                <li
-                  key={value}
-                  className={`select-model__option ${isSelected ? 'select-model__option--selected' : ''} ${isHighlighted ? 'select-model__option--highlighted' : ''}`}
-                  onClick={() => handleSelectModel(model)}
-                  onMouseEnter={() => setHighlightedIndex(index)}
-                  role="option"
-                  aria-selected={isSelected}
-                >
-                  <span className="select-model__option-text">{display}</span>
-                  {isSelected && (
-                    <span className="select-model__check">
-                      <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
-                        <path d="M11.5 4L5.5 10L2.5 7" stroke="currentColor" strokeWidth="2" fill="none" />
-                      </svg>
-                    </span>
-                  )}
-                </li>
-              );
-            })
-          )}
-        </ul>
+                return (
+                  <li
+                    key={value}
+                    className={`select-model__option ${isSelected ? 'select-model__option--selected' : ''} ${isHighlighted ? 'select-model__option--highlighted' : ''}`}
+                    onClick={() => handleSelectModel(model)}
+                    onMouseEnter={() => setHighlightedIndex(index)}
+                    role="option"
+                    aria-selected={isSelected}
+                  >
+                    {display}
+                  </li>
+                );
+              })
+            ) : (
+              <li className="select-model__no-results">
+                No models found
+              </li>
+            )}
+          </ul>
+        </div>
       )}
     </div>
   );
@@ -216,21 +211,20 @@ SelectModel.propTypes = {
         id: PropTypes.string,
         name: PropTypes.string,
         value: PropTypes.string,
-        label: PropTypes.string,
-      }),
+        label: PropTypes.string
+      })
     ])
   ).isRequired,
   selectedModel: PropTypes.string,
   onModelChange: PropTypes.func.isRequired,
   disabled: PropTypes.bool,
-  placeholder: PropTypes.string,
+  placeholder: PropTypes.string
 };
 
 SelectModel.defaultProps = {
-  models: [],
   selectedModel: '',
   disabled: false,
-  placeholder: 'Select a model',
+  placeholder: 'Select a model'
 };
 
 export default SelectModel;
